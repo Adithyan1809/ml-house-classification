@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import altair as alt
+import matplotlib
+matplotlib.use('Agg') # Safe for headless Linux deployment
 import matplotlib.pyplot as plt
 import seaborn as sns
 

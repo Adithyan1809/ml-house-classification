@@ -156,13 +156,8 @@ mkswap /swapfile
 swapon /swapfile
 echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-# 2. Ensure dpkg lock is clear before proceeding
-echo "Checking dpkg lock status..."
-while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-    echo "Waiting for background update lock to release..."
-    sleep 3
-done
-
+# 2. Wait for initial boot and package installation
+sleep 5
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y python3-pip python3-venv git unzip curl
@@ -185,7 +180,21 @@ python3 -m venv venv
 ./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -r requirements.txt
 
-# 5. Create Systemd Service
+# 5. Configure Streamlit headless settings
+mkdir -p /root/.streamlit
+cat << 'EOF' > /root/.streamlit/config.toml
+[server]
+headless = true
+port = 8501
+address = "0.0.0.0"
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false
+EOF
+
+# 6. Create Systemd Service
 echo "Registering systemd service..."
 cat << 'EOF' > /etc/systemd/system/estateclassify.service
 [Unit]
@@ -196,10 +205,13 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/estate-classify
+Environment=HOME=/root
 Environment=PYTHONPATH=/opt/estate-classify
-ExecStart=/opt/estate-classify/venv/bin/streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false
+Environment=STREAMLIT_SERVER_HEADLESS=true
+Environment=STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+ExecStart=/opt/estate-classify/venv/bin/streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0
 Restart=always
-RestartSec=5
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
