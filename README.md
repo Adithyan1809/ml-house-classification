@@ -86,7 +86,7 @@ Built with Streamlit featuring a customized Glassmorphic Dark UI:
 
 ### 1. Clone Repository & Setup Environment
 ```bash
-git clone https://github.com/adithyan18092005/ml-house-classification.git
+git clone https://github.com/Adithyan1809/ml-house-classification.git
 cd ml-house-classification
 
 # Create & activate virtual environment
