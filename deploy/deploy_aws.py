@@ -16,6 +16,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 REGION = "us-east-1"
+S3_REGION = "ap-south-1"  # Location of ironlock-networksecurity-2026 bucket
 INSTANCE_TYPE = "t3.small"  # 2 vCPU, 2GB RAM for rock-solid runtime
 SECURITY_GROUP_NAME = "estate-classify-web-sg"
 S3_BUCKET_NAME = "ironlock-networksecurity-2026"
@@ -111,7 +112,7 @@ def get_ubuntu_ami(ec2_client) -> str:
 def deploy_to_ec2():
     print(f"\n🚀 Initiating AWS EC2 Deployment in {REGION}...")
     ec2 = boto3.client("ec2", region_name=REGION)
-    s3 = boto3.client("s3", region_name=REGION)
+    s3 = boto3.client("s3", region_name=S3_REGION)
 
     # 1. Package and upload to S3
     zip_path = create_project_zip()
@@ -220,6 +221,10 @@ EOF
 systemctl daemon-reload
 systemctl enable estateclassify
 systemctl start estateclassify
+
+# Port 80 -> 8501 traffic forwarding so the app is accessible on standard HTTP (port 80)
+iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8501 || true
+
 echo "=== EstateClassify Started Successfully on port 8501 at $(date) ==="
 """
 
