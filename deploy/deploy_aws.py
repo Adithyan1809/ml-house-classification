@@ -108,12 +108,20 @@ def deploy_to_ec2():
 
     # 1. Package and upload to S3
     zip_path = create_project_zip()
+    presigned_url = None
     try:
         print(f"📤 Uploading {zip_path} to s3://{S3_BUCKET_NAME}/{S3_KEY}...")
         s3.upload_file(zip_path, S3_BUCKET_NAME, S3_KEY)
         print(" S3 upload successful.")
+        # Generate presigned download URL valid for 2 hours
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": S3_BUCKET_NAME, "Key": S3_KEY},
+            ExpiresIn=7200
+        )
+        print(f" Presigned deployment package URL generated.")
     except Exception as e:
-        print(f"⚠️ S3 upload note: {e}. Cloud-init will clone from Git fallback.")
+        print(f"⚠️ S3 upload note: {e}")
 
     # 2. Get Default VPC
     vpcs = ec2.describe_vpcs(Filters=[{"Name": "isDefault", "Values": ["true"]}])
@@ -129,31 +137,35 @@ def deploy_to_ec2():
     ami_id = get_latest_ami(ec2)
 
     # 5. Cloud-init user-data script
+    download_cmd = f'curl -s -L "{presigned_url}" -o app.zip' if presigned_url else 'echo "No presigned URL"'
+
     user_data_script = f"""#!/bin/bash
 exec > /var/log/user-data.log 2>&1
 set -e
-echo "Starting cloud initialization..."
+echo "Starting cloud initialization at $(date)..."
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y python3-pip python3-venv git unzip curl awscli
+apt-get install -y python3-pip python3-venv git unzip curl
 
 mkdir -p /opt/estate-classify
 cd /opt/estate-classify
 
-# Attempt download from S3 or Git
-aws s3 cp s3://{S3_BUCKET_NAME}/{S3_KEY} app.zip || true
+# Download deployment package via presigned S3 URL
+echo "Downloading application package..."
+{download_cmd}
+
 if [ -f app.zip ]; then
+    echo "Extracting app.zip..."
     unzip -o app.zip
-else
-    git clone https://github.com/adithyan18092005/ml-house-classification.git .
 fi
 
+echo "Setting up Python virtual environment..."
 python3 -m venv /opt/estate-classify/venv
 /opt/estate-classify/venv/bin/pip install --upgrade pip
 /opt/estate-classify/venv/bin/pip install -r requirements.txt
 
-# Create systemd service
+echo "Registering systemd service..."
 cat << 'EOF' > /etc/systemd/system/estateclassify.service
 [Unit]
 Description=EstateClassify Streamlit ML Service
@@ -174,7 +186,7 @@ EOF
 systemctl daemon-reload
 systemctl enable estateclassify
 systemctl start estateclassify
-echo "Application started successfully on port 8501!"
+echo "Application started successfully on port 8501 at $(date)!"
 """
 
     # 6. Launch Instance
