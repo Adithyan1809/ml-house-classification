@@ -304,7 +304,7 @@ with tab_analytics:
             bars = ax.barh(top_df["Feature"], top_df["Relative Importance"], color='#6366f1')
             ax.tick_params(colors='#94a3b8')
             for spine in ax.spines.values():
-                spine.set_color('rgba(255,255,255,0.1)')
+                spine.set_color('#334155')
             ax.set_xlabel("Importance Score", color='#94a3b8')
             st.pyplot(fig)
 
@@ -327,7 +327,7 @@ with tab_analytics:
             ax_cm.set_xlabel("Predicted Tier", color='#94a3b8')
             ax_cm.set_ylabel("Actual Tier", color='#94a3b8')
             for spine in ax_cm.spines.values():
-                spine.set_color('rgba(255,255,255,0.1)')
+                spine.set_color('#334155')
             st.pyplot(fig_cm)
 
 # ==========================================
