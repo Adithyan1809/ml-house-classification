@@ -1,7 +1,7 @@
 """
 Automated AWS EC2 Deployment Script for EstateClassify AI
 Provisions an EC2 instance, configures Security Group (ports 80, 8501),
-and launches the Streamlit ML application using cloud-init.
+and launches the Streamlit ML application using cloud-init on Amazon Linux 2023.
 """
 
 import os
@@ -16,7 +16,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 REGION = "us-east-1"
-INSTANCE_TYPE = "t2.micro" # Free Tier eligible
+INSTANCE_TYPE = "t3.small"  # 2 vCPU, 2GB RAM for smooth XGBoost & Streamlit runtime
 SECURITY_GROUP_NAME = "estate-classify-web-sg"
 S3_BUCKET_NAME = "ironlock-networksecurity-2026"
 S3_KEY = "estate-classify/app.zip"
@@ -65,7 +65,6 @@ def get_or_create_security_group(ec2_client, vpc_id: str) -> str:
     )
     sg_id = sg_resp["GroupId"]
 
-    # Authorize ports 8501 (Streamlit), 80 (HTTP), and 22 (SSH)
     ip_permissions = [
         {
             "IpProtocol": "tcp", "FromPort": 8501, "ToPort": 8501,
@@ -84,26 +83,20 @@ def get_or_create_security_group(ec2_client, vpc_id: str) -> str:
         GroupId=sg_id,
         IpPermissions=ip_permissions
     )
-    print(f" Security Group configured with inbound ports 8501, 80, 22.")
+    print(" Security Group configured with inbound ports 8501, 80, 22.")
     return sg_id
 
 def get_latest_ami(ec2_client) -> str:
-    """Retrieves the latest official Ubuntu 22.04 Jammy LTS AMI in region."""
-    response = ec2_client.describe_images(
-        Filters=[
-            {"Name": "name", "Values": ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]},
-            {"Name": "virtualization-type", "Values": ["hvm"]},
-            {"Name": "state", "Values": ["available"]}
-        ],
-        Owners=["099720109477"] # Canonical
-    )
-    images = sorted(response["Images"], key=lambda x: x["CreationDate"], reverse=True)
-    if not images:
-        # Fallback to standard AL2023 or known Ubuntu AMI
-        return "ami-0c7217cdde317cfec"
-    latest_ami = images[0]["ImageId"]
-    print(f" Latest Ubuntu 22.04 AMI found: {latest_ami}")
-    return latest_ami
+    """Retrieves the latest official Amazon Linux 2023 AMI via SSM."""
+    try:
+        ssm = boto3.client("ssm", region_name=REGION)
+        param = ssm.get_parameter(Name="/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64")
+        ami_id = param["Parameter"]["Value"]
+        print(f" Latest Amazon Linux 2023 AMI found: {ami_id}")
+        return ami_id
+    except Exception as e:
+        print(f"SSM lookup fallback: {e}")
+        return "ami-0c230065b91270bc6"
 
 def deploy_to_ec2():
     print(f"\n🚀 Initiating AWS EC2 Deployment in {REGION}...")
@@ -117,13 +110,12 @@ def deploy_to_ec2():
         print(f"📤 Uploading {zip_path} to s3://{S3_BUCKET_NAME}/{S3_KEY}...")
         s3.upload_file(zip_path, S3_BUCKET_NAME, S3_KEY)
         print(" S3 upload successful.")
-        # Generate presigned download URL valid for 2 hours
         presigned_url = s3.generate_presigned_url(
             "get_object",
             Params={"Bucket": S3_BUCKET_NAME, "Key": S3_KEY},
-            ExpiresIn=7200
+            ExpiresIn=14400
         )
-        print(f" Presigned deployment package URL generated.")
+        print(" Presigned deployment package URL generated.")
     except Exception as e:
         print(f"⚠️ S3 upload note: {e}")
 
@@ -140,22 +132,29 @@ def deploy_to_ec2():
     # 4. AMI
     ami_id = get_latest_ami(ec2)
 
-    # 5. Cloud-init user-data script
-    download_cmd = f'curl -s -L "{presigned_url}" -o app.zip' if presigned_url else 'echo "No presigned URL"'
+    # 5. Cloud-init user-data script for Amazon Linux 2023
+    download_cmd = f'curl -f -s -L "{presigned_url}" -o app.zip' if presigned_url else 'echo "No presigned URL"'
 
     user_data_script = f"""#!/bin/bash
 exec > /var/log/user-data.log 2>&1
-set -e
-echo "Starting cloud initialization at $(date)..."
+echo "=== Cloud Init Starting at $(date) ==="
 
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -y
-apt-get install -y python3-pip python3-venv git unzip curl
+# 1. Setup 2GB Swap Space
+dd if=/dev/zero of=/swapfile bs=128M count=16
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 
+# 2. Install dependencies
+dnf update -y
+dnf install -y python3-pip git unzip
+
+# 3. Directory
 mkdir -p /opt/estate-classify
 cd /opt/estate-classify
 
-# Download deployment package via presigned S3 URL
+# 4. Download and unpack code
 echo "Downloading application package..."
 {download_cmd}
 
@@ -164,15 +163,17 @@ if [ -f app.zip ]; then
     unzip -o app.zip
 fi
 
+# 5. Setup Python virtual environment & dependencies
 echo "Setting up Python virtual environment..."
-python3 -m venv /opt/estate-classify/venv
-/opt/estate-classify/venv/bin/pip install --upgrade pip
-/opt/estate-classify/venv/bin/pip install -r requirements.txt
+python3 -m venv venv
+./venv/bin/pip install --upgrade pip
+./venv/bin/pip install -r requirements.txt
 
+# 6. Create and start systemd service
 echo "Registering systemd service..."
 cat << 'EOF' > /etc/systemd/system/estateclassify.service
 [Unit]
-Description=EstateClassify Streamlit ML Service
+Description=EstateClassify Streamlit ML Application
 After=network.target
 
 [Service]
@@ -190,7 +191,7 @@ EOF
 systemctl daemon-reload
 systemctl enable estateclassify
 systemctl start estateclassify
-echo "Application started successfully on port 8501 at $(date)!"
+echo "=== EstateClassify Started Successfully on port 8501 at $(date) ==="
 """
 
     # 6. Launch Instance
@@ -227,7 +228,7 @@ echo "Application started successfully on port 8501 at $(date)!"
     public_dns = inst.get("PublicDnsName", "Pending")
 
     print("\n" + "="*60)
-    print(" 🎉 AWS EC2 DEPLOYMENT SUCCESSFUL!")
+    print(" 🎉 AWS EC2 DEPLOYMENT PROVISIONED!")
     print("="*60)
     print(f" Instance ID:   {instance_id}")
     print(f" Region:        {REGION}")
@@ -236,7 +237,7 @@ echo "Application started successfully on port 8501 at $(date)!"
     print(f" Public DNS:    {public_dns}")
     print(f"\n🌐 Live Application URL: http://{public_ip}:8501")
     print("="*60)
-    print("Note: Please allow 2-3 minutes for cloud-init package installation.")
+    print("Cloud-init is currently downloading packages and starting the service.")
     return {
         "instance_id": instance_id,
         "public_ip": public_ip,
