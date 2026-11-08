@@ -36,7 +36,9 @@ def create_project_zip(output_zip: str = "deploy/app.zip"):
                     continue
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, project_root)
-                zf.write(full_path, rel_path)
+                # Ensure POSIX forward slashes in zip archive for Linux compatibility
+                arcname = rel_path.replace("\\", "/")
+                zf.write(full_path, arcname)
     
     print(f" Zip bundle created ({os.path.getsize(output_zip) / (1024*1024):.2f} MB)")
     return output_zip
@@ -194,6 +196,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/estate-classify
+Environment=PYTHONPATH=/opt/estate-classify
 ExecStart=/opt/estate-classify/venv/bin/streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false
 Restart=always
 RestartSec=5
