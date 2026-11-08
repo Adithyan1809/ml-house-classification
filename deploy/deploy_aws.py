@@ -11,6 +11,10 @@ import zipfile
 import boto3
 from botocore.exceptions import ClientError
 
+# Ensure UTF-8 output on Windows consoles
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 REGION = "us-east-1"
 INSTANCE_TYPE = "t2.micro" # Free Tier eligible
 SECURITY_GROUP_NAME = "estate-classify-web-sg"

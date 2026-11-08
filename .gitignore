@@ -48,4 +48,6 @@ ENV/
 Thumbs.db
 
 # Large dataset raw files (optional to keep git repo light, but small sample can be retained)
-# data/*.zip
+# Deployment zip bundles
+deploy/*.zip
+deploy/app.zip
