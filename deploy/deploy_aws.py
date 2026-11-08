@@ -1,7 +1,7 @@
 """
 Automated AWS EC2 Deployment Script for EstateClassify AI
-Provisions an EC2 instance, configures Security Group (ports 80, 8501),
-and launches the Streamlit ML application using cloud-init on Amazon Linux 2023.
+Provisions an EC2 instance on Ubuntu 22.04 LTS (t3.small with swap),
+configures Security Group (ports 80, 8501, 22), and launches Streamlit ML app.
 """
 
 import os
@@ -16,7 +16,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 REGION = "us-east-1"
-INSTANCE_TYPE = "t3.small"  # 2 vCPU, 2GB RAM for smooth XGBoost & Streamlit runtime
+INSTANCE_TYPE = "t3.small"  # 2 vCPU, 2GB RAM for rock-solid runtime
 SECURITY_GROUP_NAME = "estate-classify-web-sg"
 S3_BUCKET_NAME = "ironlock-networksecurity-2026"
 S3_KEY = "estate-classify/app.zip"
@@ -86,17 +86,25 @@ def get_or_create_security_group(ec2_client, vpc_id: str) -> str:
     print(" Security Group configured with inbound ports 8501, 80, 22.")
     return sg_id
 
-def get_latest_ami(ec2_client) -> str:
-    """Retrieves the latest official Amazon Linux 2023 AMI via SSM."""
+def get_ubuntu_ami(ec2_client) -> str:
+    """Retrieves the latest official Ubuntu 22.04 LTS AMI."""
     try:
-        ssm = boto3.client("ssm", region_name=REGION)
-        param = ssm.get_parameter(Name="/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64")
-        ami_id = param["Parameter"]["Value"]
-        print(f" Latest Amazon Linux 2023 AMI found: {ami_id}")
-        return ami_id
+        response = ec2_client.describe_images(
+            Filters=[
+                {"Name": "name", "Values": ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]},
+                {"Name": "virtualization-type", "Values": ["hvm"]},
+                {"Name": "state", "Values": ["available"]}
+            ],
+            Owners=["099720109477"]
+        )
+        images = sorted(response["Images"], key=lambda x: x["CreationDate"], reverse=True)
+        if images:
+            ami_id = images[0]["ImageId"]
+            print(f" Latest Ubuntu 22.04 AMI: {ami_id}")
+            return ami_id
     except Exception as e:
-        print(f"SSM lookup fallback: {e}")
-        return "ami-0c230065b91270bc6"
+        print(f"AMI lookup note: {e}")
+    return "ami-033ea4ff4a9c726dc"
 
 def deploy_to_ec2():
     print(f"\n🚀 Initiating AWS EC2 Deployment in {REGION}...")
@@ -130,9 +138,9 @@ def deploy_to_ec2():
     sg_id = get_or_create_security_group(ec2, vpc_id)
 
     # 4. AMI
-    ami_id = get_latest_ami(ec2)
+    ami_id = get_ubuntu_ami(ec2)
 
-    # 5. Cloud-init user-data script for Amazon Linux 2023
+    # 5. Cloud-init user-data script for Ubuntu 22.04
     download_cmd = f'curl -f -s -L "{presigned_url}" -o app.zip' if presigned_url else 'echo "No presigned URL"'
 
     user_data_script = f"""#!/bin/bash
@@ -140,22 +148,28 @@ exec > /var/log/user-data.log 2>&1
 echo "=== Cloud Init Starting at $(date) ==="
 
 # 1. Setup 2GB Swap Space
-dd if=/dev/zero of=/swapfile bs=128M count=16
+fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=128M count=16
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
-echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-# 2. Install dependencies
-dnf update -y
-dnf install -y python3-pip git unzip
+# 2. Ensure dpkg lock is clear before proceeding
+echo "Checking dpkg lock status..."
+while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+    echo "Waiting for background update lock to release..."
+    sleep 3
+done
 
-# 3. Directory
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y python3-pip python3-venv git unzip curl
+
+# 3. Project Directory & Package Download
 mkdir -p /opt/estate-classify
 cd /opt/estate-classify
 
-# 4. Download and unpack code
-echo "Downloading application package..."
+echo "Downloading deployment package..."
 {download_cmd}
 
 if [ -f app.zip ]; then
@@ -163,13 +177,13 @@ if [ -f app.zip ]; then
     unzip -o app.zip
 fi
 
-# 5. Setup Python virtual environment & dependencies
+# 4. Setup Python Virtual Environment & Install Dependencies
 echo "Setting up Python virtual environment..."
 python3 -m venv venv
 ./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -r requirements.txt
 
-# 6. Create and start systemd service
+# 5. Create Systemd Service
 echo "Registering systemd service..."
 cat << 'EOF' > /etc/systemd/system/estateclassify.service
 [Unit]
@@ -237,7 +251,6 @@ echo "=== EstateClassify Started Successfully on port 8501 at $(date) ==="
     print(f" Public DNS:    {public_dns}")
     print(f"\n🌐 Live Application URL: http://{public_ip}:8501")
     print("="*60)
-    print("Cloud-init is currently downloading packages and starting the service.")
     return {
         "instance_id": instance_id,
         "public_ip": public_ip,
