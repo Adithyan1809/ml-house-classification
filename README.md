@@ -30,10 +30,10 @@ An end-to-end Machine Learning production system that classifies residential pro
 In residential real estate and mortgage analytics, predicting continuous price often misses categorical strategic decisions such as portfolio grouping, risk stratification, and buyer segment matching.
 
 **EstateClassify AI** classifies houses into four distinct market segments:
-- **Affordable / Starter**: Entry-level starter homes (< $325,000)
-- **Mid-Range / Core Family**: Standard suburban single-family homes ($325,000 – $500,000)
-- **Upper-Mid / Executive**: High-end properties in desirable neighborhoods ($500,000 – $750,000)
-- **Luxury / Elite Estate**: Premier luxury estates, waterfronts, and architectural masterpieces (≥ $750,000)
+- **Affordable / Starter**: Entry-level starter homes (< \$325,000)
+- **Mid-Range / Core Family**: Standard suburban single-family homes (\$325,000 – \$500,000)
+- **Upper-Mid / Executive**: High-end properties in desirable neighborhoods (\$500,000 – \$750,000)
+- **Luxury / Elite Estate**: Premier luxury estates, waterfronts, and architectural masterpieces (≥ \$750,000)
 
 ---
 
@@ -46,10 +46,10 @@ In residential real estate and mortgage analytics, predicting continuous price o
 
 ### Feature Engineering
 Following strict ML discipline (fit on train, transform on test/live):
-1. **Property Age & History**: `house_age` ($2026 - \text{yr\_built}$), `is_renovated`, `years_since_renovation`.
+1. **Property Age & History**: `house_age` (`2026 - yr_built`), `is_renovated`, `years_since_renovation`.
 2. **Spatial Utilization**: `sqft_living_per_bed`, `bath_to_bed_ratio`, `living_to_lot_ratio`, `has_basement`, `basement_ratio`.
-3. **Neighborhood Comparison**: `living_vs_neighbors` ($\text{sqft\_living} / \text{sqft\_living15}$), `lot_vs_neighbors`.
-4. **Luxury Index**: Composite scoring factoring waterfront access, panoramic view ratings, construction grade ($1-13$), and property condition.
+3. **Neighborhood Comparison**: `living_vs_neighbors` (`sqft_living / sqft_living15`), `lot_vs_neighbors`.
+4. **Luxury Index**: Composite scoring factoring waterfront access, panoramic view ratings, construction grade (1–13), and property condition.
 
 ---
 
