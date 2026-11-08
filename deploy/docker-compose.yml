@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: estate_classify_app
+    restart: always
+    ports:
+      - "8501:8501"
+    environment:
+      - PORT=8501
+    volumes:
+      - ../models:/app/models

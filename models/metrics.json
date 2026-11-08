@@ -1,0 +1,215 @@
+{
+  "best_model_name": "XGBoost",
+  "best_metrics": {
+    "accuracy": 0.8042,
+    "precision_macro": 0.8158,
+    "recall_macro": 0.8091,
+    "f1_macro": 0.8122,
+    "f1_weighted": 0.805,
+    "cv_f1_macro_mean": 0.7957,
+    "train_time_sec": 4.26,
+    "latency_ms_per_sample": 0.0069,
+    "confusion_matrix": [
+      [
+        919,
+        171,
+        5,
+        0
+      ],
+      [
+        122,
+        1088,
+        172,
+        2
+      ],
+      [
+        5,
+        175,
+        845,
+        83
+      ],
+      [
+        0,
+        3,
+        108,
+        622
+      ]
+    ]
+  },
+  "all_models": {
+    "Logistic Regression (Baseline)": {
+      "accuracy": 0.6838,
+      "precision_macro": 0.7015,
+      "recall_macro": 0.6889,
+      "f1_macro": 0.6944,
+      "f1_weighted": 0.6846,
+      "cv_f1_macro_mean": 0.6829,
+      "train_time_sec": 0.418,
+      "latency_ms_per_sample": 0.001,
+      "confusion_matrix": [
+        [
+          875,
+          209,
+          10,
+          1
+        ],
+        [
+          207,
+          916,
+          246,
+          15
+        ],
+        [
+          11,
+          349,
+          632,
+          116
+        ],
+        [
+          0,
+          25,
+          177,
+          531
+        ]
+      ]
+    },
+    "Random Forest": {
+      "accuracy": 0.791,
+      "precision_macro": 0.8085,
+      "recall_macro": 0.7921,
+      "f1_macro": 0.7991,
+      "f1_weighted": 0.7924,
+      "cv_f1_macro_mean": 0.7791,
+      "train_time_sec": 3.904,
+      "latency_ms_per_sample": 0.0568,
+      "confusion_matrix": [
+        [
+          890,
+          199,
+          6,
+          0
+        ],
+        [
+          117,
+          1109,
+          156,
+          2
+        ],
+        [
+          7,
+          206,
+          823,
+          72
+        ],
+        [
+          0,
+          8,
+          130,
+          595
+        ]
+      ]
+    },
+    "XGBoost": {
+      "accuracy": 0.8042,
+      "precision_macro": 0.8158,
+      "recall_macro": 0.8091,
+      "f1_macro": 0.8122,
+      "f1_weighted": 0.805,
+      "cv_f1_macro_mean": 0.7957,
+      "train_time_sec": 4.26,
+      "latency_ms_per_sample": 0.0069,
+      "confusion_matrix": [
+        [
+          919,
+          171,
+          5,
+          0
+        ],
+        [
+          122,
+          1088,
+          172,
+          2
+        ],
+        [
+          5,
+          175,
+          845,
+          83
+        ],
+        [
+          0,
+          3,
+          108,
+          622
+        ]
+      ]
+    }
+  },
+  "feature_importances": {
+    "grade": 0.2329,
+    "sqft_living": 0.1281,
+    "lat": 0.1035,
+    "luxury_score": 0.0435,
+    "house_age": 0.0345,
+    "view": 0.0332,
+    "zipcode": 0.0328,
+    "sqft_living15": 0.0326,
+    "sqft_above": 0.0323,
+    "long": 0.0318,
+    "sqft_living_per_bed": 0.0244,
+    "is_renovated": 0.0238,
+    "sqft_lot": 0.0233,
+    "sqft_lot15": 0.023,
+    "years_since_renovation": 0.0205,
+    "bathrooms": 0.0198,
+    "living_to_lot_ratio": 0.0197,
+    "bedrooms": 0.0184,
+    "condition": 0.0184,
+    "waterfront": 0.0163,
+    "living_vs_neighbors": 0.014,
+    "basement_ratio": 0.0136,
+    "bath_to_bed_ratio": 0.0135,
+    "lot_vs_neighbors": 0.013,
+    "sqft_basement": 0.013,
+    "floors": 0.0129,
+    "has_basement": 0.0074
+  },
+  "target_tiers": [
+    "Affordable / Starter",
+    "Mid-Range / Core Family",
+    "Upper-Mid / Executive",
+    "Luxury / Elite Estate"
+  ],
+  "num_train_samples": 17277,
+  "num_test_samples": 4320,
+  "feature_names": [
+    "bedrooms",
+    "bathrooms",
+    "sqft_living",
+    "sqft_lot",
+    "floors",
+    "waterfront",
+    "view",
+    "condition",
+    "grade",
+    "sqft_above",
+    "sqft_basement",
+    "zipcode",
+    "lat",
+    "long",
+    "sqft_living15",
+    "sqft_lot15",
+    "house_age",
+    "is_renovated",
+    "years_since_renovation",
+    "sqft_living_per_bed",
+    "bath_to_bed_ratio",
+    "living_to_lot_ratio",
+    "has_basement",
+    "basement_ratio",
+    "living_vs_neighbors",
+    "lot_vs_neighbors",
+    "luxury_score"
+  ]
+}
