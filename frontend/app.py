@@ -55,19 +55,119 @@ except Exception as e:
     st.error(f"Error loading model artifacts: {e}. Please ensure models are trained.")
     st.stop()
 
-# Preset Locations in King County, Washington
+# Preset Locations across King County (Balanced geographic distribution)
 LOCATION_PRESETS = {
-    "Medina / Bellevue Luxury Gold Coast (98004)": {"lat": 47.6200, "long": -122.2150, "zipcode": 98004},
-    "Mercer Island Lakefront (98040)": {"lat": 47.5707, "long": -122.2220, "zipcode": 98040},
-    "Redmond Innovation Corridor (98052)": {"lat": 47.6740, "long": -122.1215, "zipcode": 98052},
-    "Seattle Capitol Hill / Downtown (98102)": {"lat": 47.6320, "long": -122.3210, "zipcode": 98102},
-    "Kirkland Waterfront / Highlands (98033)": {"lat": 47.6815, "long": -122.2087, "zipcode": 98033},
-    "Renton Family Suburban (98058)": {"lat": 47.4560, "long": -122.1480, "zipcode": 98058},
-    "Federal Way Starter Community (98003)": {"lat": 47.3100, "long": -122.3120, "zipcode": 98003},
-    "Custom GPS Coordinates": {"lat": 47.5500, "long": -122.2000, "zipcode": 98115}
+    "Renton Family Suburban (98058)": {
+        "lat": 47.4560, "long": -122.1480, "zipcode": 98058,
+        "desc": "Balanced South King County suburb • Typical: Mid-Range ($325k-$500k)"
+    },
+    "Federal Way Starter Community (98003)": {
+        "lat": 47.3100, "long": -122.3120, "zipcode": 98003,
+        "desc": "Affordable entry-level community • Typical: Starter (<$325k)"
+    },
+    "Seattle Green Lake / Wedgwood (98115)": {
+        "lat": 47.6830, "long": -122.2980, "zipcode": 98115,
+        "desc": "High-demand North Seattle neighborhood • Typical: Executive ($500k-$750k)"
+    },
+    "Kirkland Highlands / Rose Hill (98033)": {
+        "lat": 47.6815, "long": -122.2087, "zipcode": 98033,
+        "desc": "Eastside Lake Washington tech corridor • Typical: Upper-Mid / Executive"
+    },
+    "Redmond Innovation Corridor (98052)": {
+        "lat": 47.6740, "long": -122.1215, "zipcode": 98052,
+        "desc": "Tech campus center (Microsoft) • Typical: Upper-Mid ($500k-$750k)"
+    },
+    "Seattle Capitol Hill / Downtown (98102)": {
+        "lat": 47.6320, "long": -122.3210, "zipcode": 98102,
+        "desc": "Dense urban core with premier walkability • Typical: Upper-Mid ($500k-$750k)"
+    },
+    "Medina / Bellevue Luxury Gold Coast (98004)": {
+        "lat": 47.6200, "long": -122.2150, "zipcode": 98004,
+        "desc": "Ultra-wealthy tech billionaire enclaves • Typical: Luxury ($750k+)"
+    },
+    "Mercer Island Lakefront (98040)": {
+        "lat": 47.5707, "long": -122.2220, "zipcode": 98040,
+        "desc": "Premier lake island residential retreat • Typical: Luxury ($750k+)"
+    },
+    "Custom GPS Coordinates": {
+        "lat": 47.4560, "long": -122.1480, "zipcode": 98058,
+        "desc": "Enter any specific latitude, longitude, and zip code"
+    }
 }
 
-# Sidebar Navigation & Overview
+# 4 Benchmark Archetypes (1 per Market Tier) for instant 1-click verification
+ARCHETYPES = {
+    "starter": {
+        "name": "Affordable Starter",
+        "badge": "Under $325,000",
+        "icon": "🟢",
+        "expected_tier": "Affordable / Starter",
+        "preset_key": "Federal Way Starter Community (98003)",
+        "bedrooms": 3, "bathrooms": 1.0, "sqft_living": 1150, "sqft_lot": 5500,
+        "floors": 1.0, "grade": 6, "condition": 3, "waterfront": 0, "view": 0,
+        "sqft_basement": 0, "yr_built": 1978, "yr_renovated": 0,
+        "lat": 47.3100, "long": -122.3120, "zipcode": 98003
+    },
+    "mid": {
+        "name": "Core Family Mid-Range",
+        "badge": "$325,000 - $500,000",
+        "icon": "🔵",
+        "expected_tier": "Mid-Range / Core Family",
+        "preset_key": "Renton Family Suburban (98058)",
+        "bedrooms": 3, "bathrooms": 2.0, "sqft_living": 1750, "sqft_lot": 7200,
+        "floors": 1.0, "grade": 7, "condition": 3, "waterfront": 0, "view": 0,
+        "sqft_basement": 0, "yr_built": 1988, "yr_renovated": 0,
+        "lat": 47.4560, "long": -122.1480, "zipcode": 98058
+    },
+    "upper": {
+        "name": "Upper-Mid / Executive",
+        "badge": "$500,000 - $750,000",
+        "icon": "🟣",
+        "expected_tier": "Upper-Mid / Executive",
+        "preset_key": "Seattle Green Lake / Wedgwood (98115)",
+        "bedrooms": 3, "bathrooms": 2.25, "sqft_living": 2100, "sqft_lot": 6000,
+        "floors": 1.5, "grade": 8, "condition": 4, "waterfront": 0, "view": 0,
+        "sqft_basement": 450, "yr_built": 1965, "yr_renovated": 0,
+        "lat": 47.6830, "long": -122.2980, "zipcode": 98115
+    },
+    "luxury": {
+        "name": "Luxury / Elite Estate",
+        "badge": "$750,000 and above",
+        "icon": "🟡",
+        "expected_tier": "Luxury / Elite Estate",
+        "preset_key": "Medina / Bellevue Luxury Gold Coast (98004)",
+        "bedrooms": 5, "bathrooms": 4.0, "sqft_living": 4200, "sqft_lot": 14000,
+        "floors": 2.0, "grade": 11, "condition": 4, "waterfront": 1, "view": 3,
+        "sqft_basement": 1000, "yr_built": 2012, "yr_renovated": 0,
+        "lat": 47.6200, "long": -122.2150, "zipcode": 98004
+    }
+}
+
+# Session State Initialization (defaults to realistic Mid-Range Family Home)
+if "initialized" not in st.session_state:
+    default_arch = ARCHETYPES["mid"]
+    for k, v in default_arch.items():
+        if k not in ["name", "badge", "icon", "expected_tier"]:
+            st.session_state[f"prop_{k}"] = v
+    st.session_state["preset_select"] = default_arch["preset_key"]
+    st.session_state["initialized"] = True
+
+def load_archetype(arch_key):
+    arch = ARCHETYPES[arch_key]
+    for k, v in arch.items():
+        if k not in ["name", "badge", "icon", "expected_tier"]:
+            st.session_state[f"prop_{k}"] = v
+    st.session_state["preset_select"] = arch["preset_key"]
+
+def on_preset_select():
+    selected = st.session_state["preset_select"]
+    if selected in LOCATION_PRESETS and selected != "Custom GPS Coordinates":
+        p = LOCATION_PRESETS[selected]
+        st.session_state["prop_lat"] = float(p["lat"])
+        st.session_state["prop_long"] = float(p["long"])
+        st.session_state["prop_zipcode"] = int(p["zipcode"])
+
+# Sidebar Navigation & Model Diagnostics
 with st.sidebar:
     st.markdown("""
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
@@ -82,12 +182,12 @@ with st.sidebar:
     st.markdown("""
         <div class="status-pill">
             <div class="status-pill-dot"></div>
-            Model: XGBoost • AWS Deployed
+            Model: XGBoost • AWS Cloud Live
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### 🎯 Quick Benchmark")
+    st.markdown("### 🎯 Model Performance")
     best_m = metrics.get("best_metrics", {})
     col_sb1, col_sb2 = st.columns(2)
     with col_sb1:
@@ -98,9 +198,15 @@ with st.sidebar:
         st.metric("Latency", f"{best_m.get('latency_ms_per_sample', 0):.2f} ms")
 
     st.markdown("---")
-    st.markdown("### 📍 Location Presets")
-    selected_preset_name = st.selectbox("Choose Area", list(LOCATION_PRESETS.keys()))
-    selected_preset = LOCATION_PRESETS[selected_preset_name]
+    st.markdown("### 📍 King County Presets")
+    st.selectbox(
+        "Quick Area Presets",
+        list(LOCATION_PRESETS.keys()),
+        key="preset_select",
+        on_change=on_preset_select
+    )
+    current_desc = LOCATION_PRESETS.get(st.session_state.get("preset_select", ""), {}).get("desc", "")
+    st.caption(f"ℹ️ {current_desc}")
 
 # Main App Navigation Tabs
 tab_predict, tab_analytics, tab_batch, tab_arch = st.tabs([
@@ -115,55 +221,150 @@ tab_predict, tab_analytics, tab_batch, tab_arch = st.tabs([
 # ==========================================
 with tab_predict:
     st.markdown("""
-        <div style="margin-bottom: 24px;">
-            <h1 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.03em;">
+        <div style="margin-bottom: 20px;">
+            <h1 style="font-size: 2.1rem; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.03em;">
                 Predict Property Market Tier
             </h1>
-            <p style="color: #94a3b8; font-size: 1.05rem; margin: 0;">
-                Input architectural specifications and geographic coordinates to determine market classification, valuation bracket, and risk profile.
+            <p style="color: #94a3b8; font-size: 1.0rem; margin: 0;">
+                Input architectural specifications and geographic coordinates to determine market tier, price range, and valuation drivers.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
+    # Archetype Quick-Fill Buttons
+    st.markdown("##### ⚡ Quick-Fill Real Estate Archetypes (Click to test each tier):")
+    arch_cols = st.columns(4)
+    with arch_cols[0]:
+        if st.button("🟢 Starter Home\n(< $325,000)", use_container_width=True, help="Load Federal Way starter home"):
+            load_archetype("starter")
+            st.rerun()
+    with arch_cols[1]:
+        if st.button("🔵 Core Family\n($325k - $500k)", use_container_width=True, help="Load Renton family suburban home"):
+            load_archetype("mid")
+            st.rerun()
+    with arch_cols[2]:
+        if st.button("🟣 Executive Home\n($500k - $750k)", use_container_width=True, help="Load Seattle Green Lake home"):
+            load_archetype("upper")
+            st.rerun()
+    with arch_cols[3]:
+        if st.button("🟡 Luxury Estate\n(≥ $750,000)", use_container_width=True, help="Load Bellevue Gold Coast estate"):
+            load_archetype("luxury")
+            st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Property Input Form
     with st.form("property_form"):
         col1, col2, col3 = st.columns(3)
 
         with col1:
             st.markdown("#### 📐 Layout & Dimensions")
-            bedrooms = st.slider("Bedrooms", min_value=1, max_value=11, value=4, step=1)
-            bathrooms = st.slider("Bathrooms", min_value=1.0, max_value=8.0, value=2.75, step=0.25)
-            sqft_living = st.number_input("Living Area (sqft)", min_value=300, max_value=15000, value=2850, step=50)
-            sqft_lot = st.number_input("Lot Size (sqft)", min_value=500, max_value=500000, value=7500, step=250)
-            floors = st.selectbox("Number of Floors", [1.0, 1.5, 2.0, 2.5, 3.0, 3.5], index=2)
+            bedrooms = st.slider(
+                "Bedrooms", min_value=1, max_value=11,
+                value=int(st.session_state.get("prop_bedrooms", 3)),
+                key="prop_bedrooms"
+            )
+            bathrooms = st.slider(
+                "Bathrooms", min_value=1.0, max_value=8.0,
+                value=float(st.session_state.get("prop_bathrooms", 2.0)),
+                step=0.25,
+                key="prop_bathrooms"
+            )
+            sqft_living = st.number_input(
+                "Living Area (sqft)", min_value=300, max_value=15000,
+                value=int(st.session_state.get("prop_sqft_living", 1750)),
+                step=50,
+                key="prop_sqft_living"
+            )
+            sqft_lot = st.number_input(
+                "Lot Size (sqft)", min_value=500, max_value=500000,
+                value=int(st.session_state.get("prop_sqft_lot", 7200)),
+                step=250,
+                key="prop_sqft_lot"
+            )
+            floor_opts = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
+            curr_floor = float(st.session_state.get("prop_floors", 1.0))
+            floor_idx = floor_opts.index(curr_floor) if curr_floor in floor_opts else 0
+            floors = st.selectbox(
+                "Number of Floors", floor_opts,
+                index=floor_idx,
+                key="prop_floors"
+            )
 
         with col2:
             st.markdown("#### 💎 Architecture & Quality")
             grade = st.slider(
                 "Construction & Design Grade (1-13)",
-                min_value=1, max_value=13, value=9,
-                help="1-3: Poor, 7: Average, 10: High, 11-13: Mansion/Custom Architecture"
+                min_value=1, max_value=13,
+                value=int(st.session_state.get("prop_grade", 7)),
+                help="1-3: Low/Poor, 7: Average King County standard, 8-9: High/Custom, 10-13: Mansion/Architectural Masterpiece",
+                key="prop_grade"
             )
             condition = st.slider(
                 "Overall Condition (1-5)",
-                min_value=1, max_value=5, value=4,
-                help="1: Poor, 3: Average, 5: Pristine/Immaculate"
+                min_value=1, max_value=5,
+                value=int(st.session_state.get("prop_condition", 3)),
+                help="1: Poor/Fixer, 3: Average, 4: Good, 5: Pristine/Immaculate",
+                key="prop_condition"
             )
-            waterfront = st.selectbox("Waterfront Property?", [0, 1], format_func=lambda x: "Yes (Direct Shoreline)" if x == 1 else "No")
-            view = st.slider("View Quality Score (0-4)", min_value=0, max_value=4, value=1, help="0: None, 4: Panoramic Mountain/Water View")
-            sqft_basement = st.number_input("Basement Area (sqft)", min_value=0, max_value=5000, value=400, step=50)
+            curr_wf = int(st.session_state.get("prop_waterfront", 0))
+            waterfront = st.selectbox(
+                "Waterfront Access?", [0, 1],
+                index=curr_wf,
+                format_func=lambda x: "Yes (Direct Shoreline)" if x == 1 else "No",
+                key="prop_waterfront"
+            )
+            view = st.slider(
+                "View Quality Score (0-4)",
+                min_value=0, max_value=4,
+                value=int(st.session_state.get("prop_view", 0)),
+                help="0: None, 1: Fair, 2: Average, 3: Good, 4: Panoramic Mountain/Water",
+                key="prop_view"
+            )
+            sqft_basement = st.number_input(
+                "Basement Area (sqft)", min_value=0, max_value=5000,
+                value=int(st.session_state.get("prop_sqft_basement", 0)),
+                step=50,
+                key="prop_sqft_basement"
+            )
 
         with col3:
             st.markdown("#### 📍 Location & History")
-            lat = st.number_input("Latitude", value=float(selected_preset["lat"]), format="%.4f")
-            long = st.number_input("Longitude", value=float(selected_preset["long"]), format="%.4f")
-            zipcode = st.number_input("ZIP Code", value=int(selected_preset["zipcode"]), step=1)
-            yr_built = st.number_input("Year Built", min_value=1900, max_value=2026, value=2008, step=1)
-            yr_renovated = st.number_input("Year Renovated (0 if none)", min_value=0, max_value=2026, value=0, step=1)
+            lat = st.number_input(
+                "Latitude",
+                value=float(st.session_state.get("prop_lat", 47.4560)),
+                format="%.4f",
+                key="prop_lat"
+            )
+            long = st.number_input(
+                "Longitude",
+                value=float(st.session_state.get("prop_long", -122.1480)),
+                format="%.4f",
+                key="prop_long"
+            )
+            zipcode = st.number_input(
+                "ZIP Code (King County)",
+                value=int(st.session_state.get("prop_zipcode", 98058)),
+                step=1,
+                key="prop_zipcode"
+            )
+            yr_built = st.number_input(
+                "Year Built", min_value=1900, max_value=2026,
+                value=int(st.session_state.get("prop_yr_built", 1988)),
+                step=1,
+                key="prop_yr_built"
+            )
+            yr_renovated = st.number_input(
+                "Year Renovated (0 if none)", min_value=0, max_value=2026,
+                value=int(st.session_state.get("prop_yr_renovated", 0)),
+                step=1,
+                key="prop_yr_renovated"
+            )
 
         st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("⚡ Classify Property Tier", use_container_width=True)
 
-    # Process Prediction
+    # Feature preparation for inference
     sqft_above = sqft_living - sqft_basement
     if sqft_above < 200:
         sqft_above = 200
@@ -202,7 +403,7 @@ with tab_predict:
         "Upper-Mid / Executive": "tier-upper-mid",
         "Luxury / Elite Estate": "tier-luxury"
     }
-    applied_style = tier_styles.get(pred_tier, "tier-upper-mid")
+    applied_style = tier_styles.get(pred_tier, "tier-mid-range")
 
     st.markdown("---")
     st.markdown("### 🏆 Classification Result")
@@ -256,13 +457,20 @@ with tab_predict:
             "lat": [lat],
             "lon": [long]
         })
-        st.map(map_data, zoom=11)
+        st.map(map_data, zoom=10)
+
+        # Qualitative Explainability Summary
+        location_tier_factor = "High Prestige Area" if zipcode in [98004, 98040, 98033, 98039] else (
+            "Mid Suburban" if zipcode in [98058, 98052, 98115, 98103] else "Affordable Suburb"
+        )
+        grade_desc = "Luxury/Mansion" if grade >= 10 else ("Above Average" if grade >= 8 else ("Average Standard" if grade == 7 else "Economy"))
 
         st.markdown(f"""
-            <div style="font-size: 0.85rem; color: #94a3b8; background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top:10px;">
-                <strong>📍 Coordinates:</strong> {lat:.4f}° N, {long:.4f}° W<br>
-                <strong>🏷️ ZIP Code:</strong> {zipcode} (King County, Washington)<br>
-                <strong>📐 Space Ratio:</strong> {sqft_living / (bedrooms + 0.5):.0f} sqft/bedroom
+            <div style="font-size: 0.85rem; color: #94a3b8; background: rgba(15, 23, 42, 0.6); padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-top:10px;">
+                <strong>📍 Location:</strong> {lat:.4f}° N, {long:.4f}° W (ZIP {zipcode})<br>
+                <strong>🏷️ Geographic Weight:</strong> {location_tier_factor}<br>
+                <strong>🏗️ Construction Grade:</strong> Grade {grade}/13 ({grade_desc})<br>
+                <strong>📐 Space Density:</strong> {sqft_living / (bedrooms + 0.5):.0f} sqft/bedroom
             </div>
         """, unsafe_allow_html=True)
 
@@ -339,26 +547,38 @@ with tab_batch:
     st.markdown("### 📁 Batch Portfolio Valuation & CSV Ingestion")
     st.markdown("Upload a portfolio of houses to classify multiple properties simultaneously.")
 
-    # Generate sample download
+    # Generate sample download with examples covering multiple tiers
     sample_df = pd.DataFrame([
         {
-            "bedrooms": 3, "bathrooms": 2.0, "sqft_living": 1800, "sqft_lot": 5000,
-            "floors": 1.0, "waterfront": 0, "view": 0, "condition": 3, "grade": 7,
-            "sqft_above": 1800, "sqft_basement": 0, "yr_built": 1985, "yr_renovated": 0,
-            "zipcode": 98058, "lat": 47.4560, "long": -122.1480, "sqft_living15": 1750, "sqft_lot15": 5200
+            "bedrooms": 3, "bathrooms": 1.0, "sqft_living": 1150, "sqft_lot": 5500,
+            "floors": 1.0, "waterfront": 0, "view": 0, "condition": 3, "grade": 6,
+            "sqft_above": 1150, "sqft_basement": 0, "yr_built": 1978, "yr_renovated": 0,
+            "zipcode": 98003, "lat": 47.3100, "long": -122.3120, "sqft_living15": 1200, "sqft_lot15": 5500
         },
         {
-            "bedrooms": 5, "bathrooms": 4.5, "sqft_living": 4800, "sqft_lot": 15000,
-            "floors": 2.0, "waterfront": 1, "view": 3, "condition": 5, "grade": 11,
-            "sqft_above": 3800, "sqft_basement": 1000, "yr_built": 2012, "yr_renovated": 0,
-            "zipcode": 98004, "lat": 47.6200, "long": -122.2150, "sqft_living15": 4200, "sqft_lot15": 14000
+            "bedrooms": 3, "bathrooms": 2.0, "sqft_living": 1750, "sqft_lot": 7200,
+            "floors": 1.0, "waterfront": 0, "view": 0, "condition": 3, "grade": 7,
+            "sqft_above": 1750, "sqft_basement": 0, "yr_built": 1988, "yr_renovated": 0,
+            "zipcode": 98058, "lat": 47.4560, "long": -122.1480, "sqft_living15": 1750, "sqft_lot15": 7200
+        },
+        {
+            "bedrooms": 3, "bathrooms": 2.25, "sqft_living": 2100, "sqft_lot": 6000,
+            "floors": 1.5, "waterfront": 0, "view": 0, "condition": 4, "grade": 8,
+            "sqft_above": 1650, "sqft_basement": 450, "yr_built": 1965, "yr_renovated": 0,
+            "zipcode": 98115, "lat": 47.6830, "long": -122.2980, "sqft_living15": 1900, "sqft_lot15": 5800
+        },
+        {
+            "bedrooms": 5, "bathrooms": 4.0, "sqft_living": 4200, "sqft_lot": 14000,
+            "floors": 2.0, "waterfront": 1, "view": 3, "condition": 4, "grade": 11,
+            "sqft_above": 3200, "sqft_basement": 1000, "yr_built": 2012, "yr_renovated": 0,
+            "zipcode": 98004, "lat": 47.6200, "long": -122.2150, "sqft_living15": 3800, "sqft_lot15": 12000
         }
     ])
 
     st.download_button(
-        "📥 Download Sample CSV Template",
+        "📥 Download Sample CSV Template (All 4 Tiers Included)",
         data=sample_df.to_csv(index=False),
-        file_name="sample_houses_template.csv",
+        file_name="sample_houses_all_tiers_template.csv",
         mime="text/csv"
     )
 
