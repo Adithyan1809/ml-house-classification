@@ -139,11 +139,16 @@ docker run -p 8501:8501 estate-classify:latest
 
 ---
 
-## ☁️ AWS Cloud Deployment
+## ☁️ AWS Cloud Deployment & Live Web Application
 
-An automated deployment script using `boto3` is provided in `deploy/deploy_aws.py`.
+The application is deployed live on AWS EC2 with an Elastic IP address that remains permanent even when the instance is stopped or restarted:
+- **Live Streamlit Web App**: [http://3.211.54.86:8501](http://3.211.54.86:8501) (or standard HTTP [http://3.211.54.86](http://3.211.54.86))
+- **AWS Region**: `us-east-1` (N. Virginia)
+- **Instance ID**: `i-06ed6cd08216f604b`
+- **Permanent Static IP**: `3.211.54.86`
 
 ### Automated AWS EC2 Provisioning
+An automated deployment pipeline using `boto3` is provided in `deploy/deploy_aws.py`:
 ```bash
 python deploy/deploy_aws.py
 ```
