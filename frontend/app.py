@@ -124,11 +124,11 @@ ARCHETYPES = {
         "badge": "$500,000 - $750,000",
         "icon": "🟣",
         "expected_tier": "Upper-Mid / Executive",
-        "preset_key": "Seattle Green Lake / Wedgwood (98115)",
-        "bedrooms": 3, "bathrooms": 2.25, "sqft_living": 2100, "sqft_lot": 6000,
-        "floors": 1.5, "grade": 8, "condition": 4, "waterfront": 0, "view": 0,
-        "sqft_basement": 450, "yr_built": 1965, "yr_renovated": 0,
-        "lat": 47.6830, "long": -122.2980, "zipcode": 98115
+        "preset_key": "Redmond Innovation Corridor (98052)",
+        "bedrooms": 4, "bathrooms": 2.5, "sqft_living": 2350, "sqft_lot": 7500,
+        "floors": 2.0, "grade": 8, "condition": 3, "waterfront": 0, "view": 0,
+        "sqft_basement": 0, "yr_built": 1995, "yr_renovated": 0,
+        "lat": 47.6740, "long": -122.1215, "zipcode": 98052
     },
     "luxury": {
         "name": "Luxury / Elite Estate",

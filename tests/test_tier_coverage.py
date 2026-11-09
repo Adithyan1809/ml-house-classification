@@ -18,10 +18,10 @@ def test_all_four_market_tiers_reachable():
             "zipcode": 98058, "lat": 47.4560, "long": -122.1480, "sqft_living15": 1750, "sqft_lot15": 7200
         }),
         ("Upper-Mid / Executive", {
-            "bedrooms": 3, "bathrooms": 2.25, "sqft_living": 2100, "sqft_lot": 6000,
-            "floors": 1.5, "waterfront": 0, "view": 0, "condition": 4, "grade": 8,
-            "sqft_above": 1650, "sqft_basement": 450, "yr_built": 1965, "yr_renovated": 0,
-            "zipcode": 98115, "lat": 47.6830, "long": -122.2980, "sqft_living15": 1900, "sqft_lot15": 5800
+            "bedrooms": 4, "bathrooms": 2.5, "sqft_living": 2350, "sqft_lot": 7500,
+            "floors": 2.0, "waterfront": 0, "view": 0, "condition": 3, "grade": 8,
+            "sqft_above": 2350, "sqft_basement": 0, "yr_built": 1995, "yr_renovated": 0,
+            "zipcode": 98052, "lat": 47.6740, "long": -122.1215, "sqft_living15": 2350, "sqft_lot15": 7500
         }),
         ("Luxury / Elite Estate", {
             "bedrooms": 5, "bathrooms": 4.0, "sqft_living": 4200, "sqft_lot": 14000,
