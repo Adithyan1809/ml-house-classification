@@ -62,6 +62,73 @@ class HouseClassifierPredictor:
             "class_probabilities": prob_breakdown
         }
 
+    def explain_prediction(self, property_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calculates Tree SHAP feature contributions for explainability.
+        """
+        df = pd.DataFrame([property_data])
+        X_scaled = self.transformer.transform(df)
+        pred_class = int(self.model.predict(X_scaled)[0])
+
+        friendly_names = {
+            "grade": "Construction Quality Grade",
+            "lat": "Geographic Latitude (Neighborhood Desirability)",
+            "long": "Longitude Coordinate",
+            "sqft_living": "Interior Living Area (sqft)",
+            "sqft_living_per_bed": "Space Density (sqft per Bedroom)",
+            "luxury_score": "Luxury Score (Waterfront + View + High Grade)",
+            "waterfront": "Waterfront Shoreline Access",
+            "view": "Panoramic View Rating",
+            "condition": "Overall Property Condition",
+            "house_age": "Property Age",
+            "bathrooms": "Bathroom Count",
+            "bedrooms": "Bedroom Count",
+            "zipcode": "Postal ZIP Code",
+            "sqft_lot": "Lot Parcel Size",
+            "sqft_above": "Above-Ground Living Area",
+            "living_vs_neighbors": "Size Relative to Immediate Neighbors"
+        }
+
+        try:
+            if hasattr(self.model, "get_booster"):
+                import xgboost as xgb
+                booster = self.model.get_booster()
+                dmatrix = xgb.DMatrix(X_scaled, feature_names=self.transformer.feature_names_)
+                contribs = booster.predict(dmatrix, pred_contribs=True)
+
+                # Factors pulling down from Luxury tier (class 3)
+                lux_c_vals = contribs[0, 3, :-1]
+                lux_draggers = []
+                for name, val in zip(self.transformer.feature_names_, lux_c_vals):
+                    if val < -0.10:
+                        lux_draggers.append({
+                            "feature": friendly_names.get(name, name),
+                            "raw_name": name,
+                            "impact": round(float(val), 3)
+                        })
+                lux_draggers = sorted(lux_draggers, key=lambda x: x["impact"])[:4]
+
+                # Top positive factors for predicted class
+                pred_c_vals = contribs[0, pred_class, :-1]
+                top_pos = []
+                for name, val in zip(self.transformer.feature_names_, pred_c_vals):
+                    if val > 0.05:
+                        top_pos.append({
+                            "feature": friendly_names.get(name, name),
+                            "raw_name": name,
+                            "impact": round(float(val), 3)
+                        })
+                top_pos = sorted(top_pos, key=lambda x: x["impact"], reverse=True)[:3]
+
+                return {
+                    "top_drivers": top_pos,
+                    "luxury_draggers": lux_draggers
+                }
+        except Exception:
+            pass
+
+        return {"top_drivers": [], "luxury_draggers": []}
+
     def predict_batch(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Accepts dataframe of properties and appends prediction columns.

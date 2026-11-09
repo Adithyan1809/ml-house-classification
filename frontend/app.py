@@ -270,11 +270,12 @@ with tab_predict:
                 step=0.25,
                 key="prop_bathrooms"
             )
-            sqft_living = st.number_input(
-                "Living Area (sqft)", min_value=300, max_value=15000,
+            sqft_living = st.slider(
+                "Living Area (sqft)", min_value=400, max_value=12000,
                 value=int(st.session_state.get("prop_sqft_living", 1750)),
                 step=50,
-                key="prop_sqft_living"
+                key="prop_sqft_living",
+                help="Total interior finished living space in square feet"
             )
             sqft_lot = st.number_input(
                 "Lot Size (sqft)", min_value=500, max_value=500000,
@@ -359,6 +360,15 @@ with tab_predict:
                 value=int(st.session_state.get("prop_yr_renovated", 0)),
                 step=1,
                 key="prop_yr_renovated"
+            )
+
+        # Space density sanity calculation
+        density = sqft_living / (bedrooms + 0.5)
+        if density < 220 or (bedrooms >= 8 and sqft_living < 3000):
+            st.warning(
+                f"⚠️ **Space Density Warning**: {bedrooms} bedrooms inside {sqft_living:,} sqft yields only **{density:.0f} sqft/bedroom**. "
+                f"In King County real estate records, this resembles high-density micro-units / rooming quarters rather than a luxury mansion. "
+                f"For an authentic Grade {grade} luxury estate with {bedrooms} bedrooms, increase Living Area to **4,500+ sqft**."
             )
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -473,6 +483,40 @@ with tab_predict:
                 <strong>📐 Space Density:</strong> {sqft_living / (bedrooms + 0.5):.0f} sqft/bedroom
             </div>
         """, unsafe_allow_html=True)
+
+    # Feature Attribution & Tree SHAP Model Reasoning
+    explanation = engine.explain_prediction(prop_payload)
+    top_drivers = explanation.get("top_drivers", [])
+    lux_draggers = explanation.get("luxury_draggers", [])
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if pred_tier != "Luxury / Elite Estate" and (grade >= 10 or waterfront == 1 or view >= 3):
+        st.info(
+            f"💡 **Why wasn't this classified as Luxury (\$750,000+)?**\n\n"
+            f"Even though you selected luxury amenities (Grade {grade}/13, Waterfront={bool(waterfront)}, View={view}/4), "
+            f"the **modest living space ({sqft_living:,} sqft)** and **neighborhood coordinates (ZIP {zipcode})** "
+            f"strongly anchored the valuation into the **{pred_tier}** bracket."
+        )
+
+    with st.expander("🔍 Deep Model Reasoning & Feature Attribution (Tree SHAP)", expanded=True):
+        shap_c1, shap_c2 = st.columns(2)
+        with shap_c1:
+            st.markdown(f"##### 📈 Factors Supporting **{pred_tier}**")
+            if top_drivers:
+                for d in top_drivers:
+                    st.markdown(f"- ✅ **{d['feature']}**: `+{d['impact']:.2f}` log-odds")
+            else:
+                st.caption("Standard baseline contribution.")
+        with shap_c2:
+            if lux_draggers and pred_tier != "Luxury / Elite Estate":
+                st.markdown("##### 📉 Factors Preventing Luxury Tier")
+                for d in lux_draggers:
+                    st.markdown(f"- ⚠️ **{d['feature']}**: `{d['impact']:.2f}` drag")
+            else:
+                st.markdown("##### 🌟 Key Value Drivers")
+                st.markdown(f"- Construction Grade: Grade {grade}/13")
+                st.markdown(f"- Total Living Area: {sqft_living:,} sqft")
+                st.markdown(f"- Location: ZIP {zipcode}")
 
 # ==========================================
 # TAB 2: MODEL ANALYTICS & EXPLAINABILITY

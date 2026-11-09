@@ -55,3 +55,17 @@ def test_batch_prediction():
     result_df = predictor.predict_batch(sample_df)
     assert "predicted_tier" in result_df.columns
     assert "confidence" in result_df.columns
+
+def test_explain_prediction():
+    predictor = HouseClassifierPredictor()
+    sample = {
+        'bedrooms': 4, 'bathrooms': 2.5, 'sqft_living': 2200, 'sqft_lot': 6500,
+        'floors': 1.5, 'waterfront': 0, 'view': 0, 'condition': 3, 'grade': 8,
+        'sqft_above': 1800, 'sqft_basement': 400, 'yr_built': 1995, 'yr_renovated': 0,
+        'zipcode': 98058, 'lat': 47.4560, 'long': -122.1480,
+        'sqft_living15': 2000, 'sqft_lot15': 6500
+    }
+    exp = predictor.explain_prediction(sample)
+    assert "top_drivers" in exp
+    assert "luxury_draggers" in exp
+    assert isinstance(exp["top_drivers"], list)
